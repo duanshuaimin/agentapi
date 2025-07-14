@@ -15,6 +15,8 @@ require (
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da
 )
 
+require github.com/joho/godotenv v1.5.1 // indirect
+
 require (
 	github.com/ActiveState/termtest/conpty v0.5.0 // indirect
 	github.com/ActiveState/vt10x v1.3.1 // indirect

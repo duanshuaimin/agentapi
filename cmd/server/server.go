@@ -9,6 +9,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/joho/godotenv"
 	"github.com/spf13/cobra"
 	"golang.org/x/xerrors"
 
@@ -79,6 +80,13 @@ func runServer(ctx context.Context, logger *slog.Logger, argsToPass []string) er
 	agentType, err := parseAgentType(agent, agentTypeVar)
 	if err != nil {
 		return xerrors.Errorf("failed to parse agent type: %w", err)
+	}
+
+	if agentType == AgentTypeClaude {
+		err := godotenv.Load()
+		if err != nil {
+			return xerrors.Errorf("failed to load .env file: %w", err)
+		}
 	}
 
 	if termWidth < 10 {
