@@ -6,3 +6,4 @@ snapshot2-*.log
 schema.yaml
 **/.claude/settings.local.json
 out
+.claude.json
