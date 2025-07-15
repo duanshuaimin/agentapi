@@ -124,6 +124,8 @@ export default function MessageList({ messages }: MessageListProps) {
               >
                 {message.role !== "user" && message.content === "" ? (
                   <LoadingDots />
+                ) : message.role === "user" ? (
+                  `> ${message.content.trim()}`
                 ) : (
                   message.content.trim()
                 )}
