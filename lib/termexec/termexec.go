@@ -17,6 +17,7 @@ import (
 	"golang.org/x/xerrors"
 )
 
+// Process is a process running in a pseudo-terminal.
 type Process struct {
 	xp               *xpty.Xpty
 	execCmd          *exec.Cmd
@@ -24,6 +25,7 @@ type Process struct {
 	lastScreenUpdate time.Time
 }
 
+// StartProcessConfig is the configuration for starting a process.
 type StartProcessConfig struct {
 	Program        string
 	Args           []string
@@ -31,6 +33,7 @@ type StartProcessConfig struct {
 	TerminalHeight uint16
 }
 
+// StartProcess starts a process in a pseudo-terminal.
 func StartProcess(ctx context.Context, args StartProcessConfig) (*Process, error) {
 	logger := logctx.From(ctx)
 	xp, err := xpty.New(args.TerminalWidth, args.TerminalHeight, false)
@@ -98,6 +101,7 @@ func StartProcess(ctx context.Context, args StartProcessConfig) (*Process, error
 	return process, nil
 }
 
+// Signal sends a signal to the process.
 func (p *Process) Signal(sig os.Signal) error {
 	return p.execCmd.Process.Signal(sig)
 }
@@ -166,6 +170,7 @@ func (p *Process) Close(logger *slog.Logger, timeout time.Duration) error {
 	return exitErr
 }
 
+// ErrNonZeroExitCode is returned when a process exits with a non-zero exit code.
 var ErrNonZeroExitCode = xerrors.New("non-zero exit code")
 
 // Wait waits for the process to exit.

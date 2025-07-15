@@ -35,6 +35,7 @@ type Server struct {
 	emitter      *EventEmitter
 }
 
+// GetOpenAPI returns the OpenAPI schema for the server.
 func (s *Server) GetOpenAPI() string {
 	jsonBytes, err := s.api.OpenAPI().MarshalJSON()
 	if err != nil {
@@ -103,6 +104,7 @@ func NewServer(ctx context.Context, agentType mf.AgentType, process *termexec.Pr
 	return s
 }
 
+// StartSnapshotLoop starts the snapshot loop.
 func (s *Server) StartSnapshotLoop(ctx context.Context) {
 	s.conversation.StartSnapshotLoop(ctx)
 	go func() {
@@ -184,7 +186,7 @@ func (s *Server) getMessages(ctx context.Context, input *struct{}) (*MessagesRes
 	resp.Body.Messages = make([]Message, len(s.conversation.Messages()))
 	for i, msg := range s.conversation.Messages() {
 		resp.Body.Messages[i] = Message{
-			Id:      msg.Id,
+			ID:      msg.ID,
 			Role:    msg.Role,
 			Content: msg.Message,
 			Time:    msg.Time,
@@ -197,7 +199,7 @@ func (s *Server) getMessages(ctx context.Context, input *struct{}) (*MessagesRes
 // createMessage handles POST /message
 func (s *Server) createMessage(ctx context.Context, input *MessageRequest) (*MessageResponse, error) {
 	s.mu.Lock()
-	defer s.mu.Unlock()
+	defer s.mu.RUnlock()
 
 	switch input.Body.Type {
 	case MessageTypeUser:
@@ -218,15 +220,15 @@ func (s *Server) createMessage(ctx context.Context, input *MessageRequest) (*Mes
 
 // subscribeEvents is an SSE endpoint that sends events to the client
 func (s *Server) subscribeEvents(ctx context.Context, input *struct{}, send sse.Sender) {
-	subscriberId, ch, stateEvents := s.emitter.Subscribe()
-	defer s.emitter.Unsubscribe(subscriberId)
-	s.logger.Info("New subscriber", "subscriberId", subscriberId)
+	subscriberID, ch, stateEvents := s.emitter.Subscribe()
+	defer s.emitter.Unsubscribe(subscriberID)
+	s.logger.Info("New subscriber", "subscriberID", subscriberID)
 	for _, event := range stateEvents {
 		if event.Type == EventTypeScreenUpdate {
 			continue
 		}
 		if err := send.Data(event.Payload); err != nil {
-			s.logger.Error("Failed to send event", "subscriberId", subscriberId, "error", err)
+			s.logger.Error("Failed to send event", "subscriberID", subscriberID, "error", err)
 			return
 		}
 	}
@@ -234,33 +236,33 @@ func (s *Server) subscribeEvents(ctx context.Context, input *struct{}, send sse.
 		select {
 		case event, ok := <-ch:
 			if !ok {
-				s.logger.Info("Channel closed", "subscriberId", subscriberId)
+				s.logger.Info("Channel closed", "subscriberID", subscriberID)
 				return
 			}
 			if event.Type == EventTypeScreenUpdate {
 				continue
 			}
 			if err := send.Data(event.Payload); err != nil {
-				s.logger.Error("Failed to send event", "subscriberId", subscriberId, "error", err)
+				s.logger.Error("Failed to send event", "subscriberID", subscriberID, "error", err)
 				return
 			}
 		case <-ctx.Done():
-			s.logger.Info("Context done", "subscriberId", subscriberId)
+			s.logger.Info("Context done", "subscriberID", subscriberID)
 			return
 		}
 	}
 }
 
 func (s *Server) subscribeScreen(ctx context.Context, input *struct{}, send sse.Sender) {
-	subscriberId, ch, stateEvents := s.emitter.Subscribe()
-	defer s.emitter.Unsubscribe(subscriberId)
-	s.logger.Info("New screen subscriber", "subscriberId", subscriberId)
+	subscriberID, ch, stateEvents := s.emitter.Subscribe()
+	defer s.emitter.Unsubscribe(subscriberID)
+	s.logger.Info("New screen subscriber", "subscriberID", subscriberID)
 	for _, event := range stateEvents {
 		if event.Type != EventTypeScreenUpdate {
 			continue
 		}
 		if err := send.Data(event.Payload); err != nil {
-			s.logger.Error("Failed to send screen event", "subscriberId", subscriberId, "error", err)
+			s.logger.Error("Failed to send screen event", "subscriberID", subscriberID, "error", err)
 			return
 		}
 	}
@@ -268,18 +270,18 @@ func (s *Server) subscribeScreen(ctx context.Context, input *struct{}, send sse.
 		select {
 		case event, ok := <-ch:
 			if !ok {
-				s.logger.Info("Screen channel closed", "subscriberId", subscriberId)
+				s.logger.Info("Screen channel closed", "subscriberID", subscriberID)
 				return
 			}
 			if event.Type != EventTypeScreenUpdate {
 				continue
 			}
 			if err := send.Data(event.Payload); err != nil {
-				s.logger.Error("Failed to send screen event", "subscriberId", subscriberId, "error", err)
+				s.logger.Error("Failed to send screen event", "subscriberID", subscriberID, "error", err)
 				return
 			}
 		case <-ctx.Done():
-			s.logger.Info("Screen context done", "subscriberId", subscriberId)
+			s.logger.Info("Screen context done", "subscriberID", subscriberID)
 			return
 		}
 	}

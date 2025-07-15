@@ -27,28 +27,28 @@ func TestEventEmitter(t *testing.T) {
 
 		now := time.Now()
 		emitter.UpdateMessagesAndEmitChanges([]st.ConversationMessage{
-			{Id: 1, Message: "Hello, world!", Role: st.ConversationRoleUser, Time: now},
+			{ID: 1, Message: "Hello, world!", Role: st.ConversationRoleUser, Time: now},
 		})
 		newEvent := <-ch
 		assert.Equal(t, Event{
 			Type:    EventTypeMessageUpdate,
-			Payload: MessageUpdateBody{Id: 1, Message: "Hello, world!", Role: st.ConversationRoleUser, Time: now},
+			Payload: MessageUpdateBody{ID: 1, Message: "Hello, world!", Role: st.ConversationRoleUser, Time: now},
 		}, newEvent)
 
 		emitter.UpdateMessagesAndEmitChanges([]st.ConversationMessage{
-			{Id: 1, Message: "Hello, world! (updated)", Role: st.ConversationRoleUser, Time: now},
-			{Id: 2, Message: "What's up?", Role: st.ConversationRoleAgent, Time: now},
+			{ID: 1, Message: "Hello, world! (updated)", Role: st.ConversationRoleUser, Time: now},
+			{ID: 2, Message: "What's up?", Role: st.ConversationRoleAgent, Time: now},
 		})
 		newEvent = <-ch
 		assert.Equal(t, Event{
 			Type:    EventTypeMessageUpdate,
-			Payload: MessageUpdateBody{Id: 1, Message: "Hello, world! (updated)", Role: st.ConversationRoleUser, Time: now},
+			Payload: MessageUpdateBody{ID: 1, Message: "Hello, world! (updated)", Role: st.ConversationRoleUser, Time: now},
 		}, newEvent)
 
 		newEvent = <-ch
 		assert.Equal(t, Event{
 			Type:    EventTypeMessageUpdate,
-			Payload: MessageUpdateBody{Id: 2, Message: "What's up?", Role: st.ConversationRoleAgent, Time: now},
+			Payload: MessageUpdateBody{ID: 2, Message: "What's up?", Role: st.ConversationRoleAgent, Time: now},
 		}, newEvent)
 
 		emitter.UpdateStatusAndEmitChanges(st.ConversationStatusStable)
@@ -69,13 +69,13 @@ func TestEventEmitter(t *testing.T) {
 		now := time.Now()
 
 		emitter.UpdateMessagesAndEmitChanges([]st.ConversationMessage{
-			{Id: 1, Message: "Hello, world!", Role: st.ConversationRoleUser, Time: now},
+			{ID: 1, Message: "Hello, world!", Role: st.ConversationRoleUser, Time: now},
 		})
 		for _, ch := range channels {
 			newEvent := <-ch
 			assert.Equal(t, Event{
 				Type:    EventTypeMessageUpdate,
-				Payload: MessageUpdateBody{Id: 1, Message: "Hello, world!", Role: st.ConversationRoleUser, Time: now},
+				Payload: MessageUpdateBody{ID: 1, Message: "Hello, world!", Role: st.ConversationRoleUser, Time: now},
 			}, newEvent)
 		}
 	})
@@ -85,7 +85,7 @@ func TestEventEmitter(t *testing.T) {
 		_, ch, _ := emitter.Subscribe()
 		for i := range 5 {
 			emitter.UpdateMessagesAndEmitChanges([]st.ConversationMessage{
-				{Id: i, Message: fmt.Sprintf("Hello, world! %d", i), Role: st.ConversationRoleUser, Time: time.Now()},
+				{ID: i, Message: fmt.Sprintf("Hello, world! %d", i), Role: st.ConversationRoleUser, Time: time.Now()},
 			})
 		}
 		_, ok := <-ch

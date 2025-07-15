@@ -20,6 +20,7 @@ import (
 	"golang.org/x/xerrors"
 )
 
+// ChannelWriter is a writer that writes to a channel.
 type ChannelWriter struct {
 	ch chan []byte
 }
@@ -29,6 +30,7 @@ func (c *ChannelWriter) Write(p []byte) (n int, err error) {
 	return len(p), nil
 }
 
+// Receive receives data from the channel.
 func (c *ChannelWriter) Receive() ([]byte, bool) {
 	data, ok := <-c.ch
 	return data, ok
@@ -72,6 +74,7 @@ func (m model) View() string {
 	return m.screen
 }
 
+// ReadScreenOverHTTP reads the screen from the agentapi server.
 func ReadScreenOverHTTP(ctx context.Context, url string, ch chan<- httpapi.ScreenUpdateBody) error {
 	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	req.Header.Set("Content-Type", "application/json")
@@ -99,6 +102,7 @@ func ReadScreenOverHTTP(ctx context.Context, url string, ch chan<- httpapi.Scree
 	return nil
 }
 
+// WriteRawInputOverHTTP writes raw input to the agentapi server.
 func WriteRawInputOverHTTP(ctx context.Context, url string, msg string) error {
 	messageRequest := httpapi.MessageRequestBody{
 		Type:    httpapi.MessageTypeRaw,
@@ -123,7 +127,7 @@ func WriteRawInputOverHTTP(ctx context.Context, url string, msg string) error {
 	return nil
 }
 
-func runAttach(remoteUrl string) error {
+func runAttach(remoteURL string) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	stdin := int(os.Stdin.Fd())
@@ -144,7 +148,7 @@ func runAttach(remoteUrl string) error {
 	readScreenErrCh := make(chan error, 1)
 	go func() {
 		defer close(readScreenErrCh)
-		if err := ReadScreenOverHTTP(ctx, remoteUrl+"/internal/screen", screenCh); err != nil {
+		if err := ReadScreenOverHTTP(ctx, remoteURL+"/internal/screen", screenCh); err != nil {
 			if errors.Is(err, context.Canceled) {
 				return
 			}
@@ -167,7 +171,7 @@ func runAttach(remoteUrl string) error {
 				if input == "\x03" {
 					continue
 				}
-				if err := WriteRawInputOverHTTP(ctx, remoteUrl+"/message", input); err != nil {
+				if err := WriteRawInputOverHTTP(ctx, remoteURL+"/message", input); err != nil {
 					writeRawInputErrCh <- xerrors.Errorf("failed to write raw input: %w", err)
 					return
 				}
@@ -213,23 +217,24 @@ func runAttach(remoteUrl string) error {
 	return err
 }
 
-var remoteUrlArg string
+var remoteURLArg string
 
+// AttachCmd is the command to attach to a running agent.
 var AttachCmd = &cobra.Command{
 	Use:   "attach",
 	Short: "Attach to a running agent",
 	Long:  `Attach to a running agent`,
 	Run: func(cmd *cobra.Command, args []string) {
-		remoteUrl := remoteUrlArg
-		if remoteUrl == "" {
+		remoteURL := remoteURLArg
+		if remoteURL == "" {
 			fmt.Fprintln(os.Stderr, "URL is required")
 			os.Exit(1)
 		}
-		if !strings.HasPrefix(remoteUrl, "http") {
-			remoteUrl = "http://" + remoteUrl
+		if !strings.HasPrefix(remoteURL, "http") {
+			remoteURL = "http://" + remoteURL
 		}
-		remoteUrl = strings.TrimRight(remoteUrl, "/")
-		if err := runAttach(remoteUrl); err != nil {
+		remoteURL = strings.TrimRight(remoteURL, "/")
+		if err := runAttach(remoteURL); err != nil {
 			fmt.Fprintf(os.Stderr, "Attach failed: %+v\n", err)
 			os.Exit(1)
 		}
@@ -237,5 +242,5 @@ var AttachCmd = &cobra.Command{
 }
 
 func init() {
-	AttachCmd.Flags().StringVarP(&remoteUrlArg, "url", "u", "localhost:3284", "URL of the agentapi server to attach to. May optionally include a protocol and a path.")
+	AttachCmd.Flags().StringVarP(&remoteURLArg, "url", "u", "localhost:3284", "URL of the agentapi server to attach to. May optionally include a protocol and a path.")
 }

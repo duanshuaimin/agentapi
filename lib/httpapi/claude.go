@@ -5,6 +5,7 @@ import (
 	st "github.com/coder/agentapi/lib/screentracker"
 )
 
+// FormatPaste formats a message as a bracketed paste.
 func formatPaste(message string) []st.MessagePart {
 	return []st.MessagePart{
 		// Bracketed paste mode start sequence
@@ -15,6 +16,7 @@ func formatPaste(message string) []st.MessagePart {
 	}
 }
 
+// FormatClaudeCodeMessage formats a message for Claude Code.
 func formatClaudeCodeMessage(message string) []st.MessagePart {
 	parts := make([]st.MessagePart, 0)
 	// janky hack: send a random character and then a backspace because otherwise
@@ -26,6 +28,7 @@ func formatClaudeCodeMessage(message string) []st.MessagePart {
 	return parts
 }
 
+// FormatMessage formats a message for the given agent type.
 func FormatMessage(agentType mf.AgentType, message string) []st.MessagePart {
 	message = mf.TrimWhitespace(message)
 	// for now Claude Code formatting seems to also work for Goose and Aider
