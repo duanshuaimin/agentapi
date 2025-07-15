@@ -28,15 +28,15 @@ func (r *RingBuffer[T]) Add(item T) {
 }
 
 // GetAll returns all items in the buffer, oldest first
-func (b *RingBuffer[T]) GetAll() []T {
-	result := make([]T, b.count)
-	for i := 0; i < b.count; i++ {
-		result[i] = b.items[(b.nextIndex-b.count+i+len(b.items))%len(b.items)]
+func (r *RingBuffer[T]) GetAll() []T {
+	result := make([]T, r.count)
+	for i := 0; i < r.count; i++ {
+		result[i] = r.items[(r.nextIndex-r.count+i+len(r.items))%len(r.items)]
 	}
 	return result
 }
 
 // Capacity returns the capacity of the ring buffer
-func (b *RingBuffer[T]) Capacity() int {
-	return b.size
+func (r *RingBuffer[T]) Capacity() int {
+	return r.size
 }

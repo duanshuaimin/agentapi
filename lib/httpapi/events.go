@@ -12,50 +12,61 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 )
 
+// EventType is the type of an event.
 type EventType string
 
+// Event types.
 const (
 	EventTypeMessageUpdate EventType = "message_update"
 	EventTypeStatusChange  EventType = "status_change"
 	EventTypeScreenUpdate  EventType = "screen_update"
 )
 
+// AgentStatus is the status of the agent.
 type AgentStatus string
 
+// Agent statuses.
 const (
 	AgentStatusRunning AgentStatus = "running"
 	AgentStatusStable  AgentStatus = "stable"
 )
 
+// AgentStatusValues are the possible values for AgentStatus.
 var AgentStatusValues = []AgentStatus{
 	AgentStatusStable,
 	AgentStatusRunning,
 }
 
+// Schema returns the OpenAPI schema for AgentStatus.
 func (a AgentStatus) Schema(r huma.Registry) *huma.Schema {
 	return util.OpenAPISchema(r, "AgentStatus", AgentStatusValues)
 }
 
+// MessageUpdateBody is the payload for a message update event.
 type MessageUpdateBody struct {
-	Id      int                 `json:"id" doc:"Unique identifier for the message. This identifier also represents the order of the message in the conversation history."`
+	ID      int                 `json:"id" doc:"Unique identifier for the message. This identifier also represents the order of the message in the conversation history."`
 	Role    st.ConversationRole `json:"role" doc:"Role of the message author"`
 	Message string              `json:"message" doc:"Message content. The message is formatted as it appears in the agent's terminal session, meaning that, by default, it consists of lines of text with 80 characters per line."`
 	Time    time.Time           `json:"time" doc:"Timestamp of the message"`
 }
 
+// StatusChangeBody is the payload for a status change event.
 type StatusChangeBody struct {
 	Status AgentStatus `json:"status" doc:"Agent status"`
 }
 
+// ScreenUpdateBody is the payload for a screen update event.
 type ScreenUpdateBody struct {
 	Screen string `json:"screen"`
 }
 
+// Event is an event that can be sent to a client.
 type Event struct {
 	Type    EventType
 	Payload any
 }
 
+// EventEmitter is an event emitter that sends events to subscribers.
 type EventEmitter struct {
 	mu                  sync.Mutex
 	messages            []st.ConversationMessage
@@ -79,6 +90,7 @@ func convertStatus(status st.ConversationStatus) AgentStatus {
 	}
 }
 
+// NewEventEmitter creates a new EventEmitter.
 // subscriptionBufSize is the size of the buffer for each subscription.
 // Once the buffer is full, the channel will be closed.
 // Listeners must actively drain the channel, so it's important to
@@ -97,12 +109,12 @@ func NewEventEmitter(subscriptionBufSize int) *EventEmitter {
 
 // Assumes the caller holds the lock.
 func (e *EventEmitter) notifyChannels(eventType EventType, payload any) {
-	chanIds := make([]int, 0, len(e.chans))
-	for chanId := range e.chans {
-		chanIds = append(chanIds, chanId)
+	chanIDs := make([]int, 0, len(e.chans))
+	for chanID := range e.chans {
+		chanIDs = append(chanIDs, chanID)
 	}
-	for _, chanId := range chanIds {
-		ch := e.chans[chanId]
+	for _, chanID := range chanIDs {
+		ch := e.chans[chanID]
 		event := Event{
 			Type:    eventType,
 			Payload: payload,
@@ -113,11 +125,12 @@ func (e *EventEmitter) notifyChannels(eventType EventType, payload any) {
 		default:
 			// If the channel is full, close it.
 			// Listeners must actively drain the channel.
-			e.unsubscribeInner(chanId)
+			e.unsubscribeInner(chanID)
 		}
 	}
 }
 
+// UpdateMessagesAndEmitChanges updates the messages and emits changes to subscribers.
 // Assumes that only the last message can change or new messages can be added.
 // If a new message is injected between existing messages (identified by Id), the behavior is undefined.
 func (e *EventEmitter) UpdateMessagesAndEmitChanges(newMessages []st.ConversationMessage) {
@@ -136,7 +149,7 @@ func (e *EventEmitter) UpdateMessagesAndEmitChanges(newMessages []st.Conversatio
 		}
 		if oldMsg != newMsg {
 			e.notifyChannels(EventTypeMessageUpdate, MessageUpdateBody{
-				Id:      newMessages[i].Id,
+				ID:      newMessages[i].ID,
 				Role:    newMessages[i].Role,
 				Message: newMessages[i].Message,
 				Time:    newMessages[i].Time,
@@ -147,6 +160,7 @@ func (e *EventEmitter) UpdateMessagesAndEmitChanges(newMessages []st.Conversatio
 	e.messages = newMessages
 }
 
+// UpdateStatusAndEmitChanges updates the status and emits changes to subscribers.
 func (e *EventEmitter) UpdateStatusAndEmitChanges(newStatus st.ConversationStatus) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
@@ -160,6 +174,7 @@ func (e *EventEmitter) UpdateStatusAndEmitChanges(newStatus st.ConversationStatu
 	e.status = newAgentStatus
 }
 
+// UpdateScreenAndEmitChanges updates the screen and emits changes to subscribers.
 func (e *EventEmitter) UpdateScreenAndEmitChanges(newScreen string) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
@@ -178,7 +193,7 @@ func (e *EventEmitter) currentStateAsEvents() []Event {
 	for _, msg := range e.messages {
 		events = append(events, Event{
 			Type:    EventTypeMessageUpdate,
-			Payload: MessageUpdateBody{Id: msg.Id, Role: msg.Role, Message: msg.Message, Time: msg.Time},
+			Payload: MessageUpdateBody{ID: msg.ID, Role: msg.Role, Message: msg.Message, Time: msg.Time},
 		})
 	}
 	events = append(events, Event{
@@ -209,13 +224,14 @@ func (e *EventEmitter) Subscribe() (int, <-chan Event, []Event) {
 }
 
 // Assumes the caller holds the lock.
-func (e *EventEmitter) unsubscribeInner(chanId int) {
-	close(e.chans[chanId])
-	delete(e.chans, chanId)
+func (e *EventEmitter) unsubscribeInner(chanID int) {
+	close(e.chans[chanID])
+	delete(e.chans, chanID)
 }
 
-func (e *EventEmitter) Unsubscribe(chanId int) {
+// Unsubscribe unsubscribes a client from receiving events.
+func (e *EventEmitter) Unsubscribe(chanID int) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
-	e.unsubscribeInner(chanId)
+	e.unsubscribeInner(chanID)
 }

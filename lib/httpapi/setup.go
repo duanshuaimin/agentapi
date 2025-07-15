@@ -13,6 +13,7 @@ import (
 	"github.com/coder/agentapi/lib/termexec"
 )
 
+// SetupProcessConfig is the configuration for setting up a process.
 type SetupProcessConfig struct {
 	Program        string
 	ProgramArgs    []string
@@ -20,6 +21,7 @@ type SetupProcessConfig struct {
 	TerminalHeight uint16
 }
 
+// SetupProcess sets up a process to be run in a terminal.
 func SetupProcess(ctx context.Context, config SetupProcessConfig) (*termexec.Process, error) {
 	logger := logctx.From(ctx)
 

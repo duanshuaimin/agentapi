@@ -10,6 +10,7 @@ import (
 	"golang.org/x/xerrors"
 )
 
+// WaitTimeout is the configuration for waiting for a condition.
 type WaitTimeout struct {
 	Timeout     time.Duration
 	MinInterval time.Duration
@@ -17,6 +18,7 @@ type WaitTimeout struct {
 	InitialWait bool
 }
 
+// WaitTimedOut is an error that occurs when a wait times out.
 var WaitTimedOut = xerrors.New("timeout waiting for condition")
 
 // WaitFor waits for a condition to be true or the timeout to expire.
@@ -64,6 +66,7 @@ func WaitFor(ctx context.Context, timeout WaitTimeout, condition func() (bool, e
 	}
 }
 
+// OpenAPISchema returns the OpenAPI schema for an enum.
 // based on https://github.com/danielgtaylor/huma/issues/621#issuecomment-2456588788
 func OpenAPISchema[T ~string](r huma.Registry, enumName string, values []T) *huma.Schema {
 	if r.Map()[enumName] == nil {

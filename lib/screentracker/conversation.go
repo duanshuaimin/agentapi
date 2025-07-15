@@ -18,11 +18,13 @@ type screenSnapshot struct {
 	screen    string
 }
 
+// AgentIO is an interface for interacting with an agent.
 type AgentIO interface {
 	Write(data []byte) (int, error)
 	ReadScreen() string
 }
 
+// ConversationConfig is the configuration for a conversation.
 type ConversationConfig struct {
 	AgentIO AgentIO
 	// GetTime returns the current time
@@ -42,29 +44,35 @@ type ConversationConfig struct {
 	SkipSendMessageStatusCheck bool
 }
 
+// ConversationRole is the role of a message author.
 type ConversationRole string
 
+// Conversation roles.
 const (
 	ConversationRoleUser  ConversationRole = "user"
 	ConversationRoleAgent ConversationRole = "agent"
 )
 
+// ConversationRoleValues are the possible values for ConversationRole.
 var ConversationRoleValues = []ConversationRole{
 	ConversationRoleUser,
 	ConversationRoleAgent,
 }
 
+// Schema returns the OpenAPI schema for ConversationRole.
 func (c ConversationRole) Schema(r huma.Registry) *huma.Schema {
 	return util.OpenAPISchema(r, "ConversationRole", ConversationRoleValues)
 }
 
+// ConversationMessage is a message in a conversation.
 type ConversationMessage struct {
-	Id      int
+	ID      int
 	Message string
 	Role    ConversationRole
 	Time    time.Time
 }
 
+// Conversation tracks the conversation with an agent.
 type Conversation struct {
 	cfg ConversationConfig
 	// How many stable snapshots are required to consider the screen stable
@@ -75,8 +83,10 @@ type Conversation struct {
 	lock                        sync.Mutex
 }
 
+// ConversationStatus is the status of a conversation.
 type ConversationStatus string
 
+// Conversation statuses.
 const (
 	ConversationStatusChanging     ConversationStatus = "changing"
 	ConversationStatusStable       ConversationStatus = "stable"
@@ -93,6 +103,7 @@ func getStableSnapshotsThreshold(cfg ConversationConfig) int {
 	return threshold + 1
 }
 
+// NewConversation creates a new conversation.
 func NewConversation(ctx context.Context, cfg ConversationConfig) *Conversation {
 	threshold := getStableSnapshotsThreshold(cfg)
 	c := &Conversation{
@@ -110,6 +121,7 @@ func NewConversation(ctx context.Context, cfg ConversationConfig) *Conversation 
 	return c
 }
 
+// StartSnapshotLoop starts a loop that takes snapshots of the screen.
 func (c *Conversation) StartSnapshotLoop(ctx context.Context) {
 	go func() {
 		for {
@@ -133,6 +145,7 @@ func (c *Conversation) StartSnapshotLoop(ctx context.Context) {
 	}()
 }
 
+// FindNewMessage finds the new message in the new screen.
 func FindNewMessage(oldScreen, newScreen string) string {
 	oldLines := strings.Split(oldScreen, "\n")
 	newLines := strings.Split(newScreen, "\n")
@@ -198,7 +211,7 @@ func (c *Conversation) updateLastAgentMessage(screen string, timestamp time.Time
 	} else {
 		c.messages[len(c.messages)-1] = conversationMessage
 	}
-	c.messages[len(c.messages)-1].Id = len(c.messages) - 1
+	c.messages[len(c.messages)-1].ID = len(c.messages) - 1
 }
 
 // assumes the caller holds the lock
@@ -211,6 +224,7 @@ func (c *Conversation) addSnapshotInner(screen string) {
 	c.updateLastAgentMessage(screen, snapshot.timestamp)
 }
 
+// AddSnapshot adds a snapshot of the screen to the conversation.
 func (c *Conversation) AddSnapshot(screen string) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
@@ -218,17 +232,20 @@ func (c *Conversation) AddSnapshot(screen string) {
 	c.addSnapshotInner(screen)
 }
 
+// MessagePart is a part of a message.
 type MessagePart interface {
 	Do(writer AgentIO) error
 	String() string
 }
 
+// MessagePartText is a text part of a message.
 type MessagePartText struct {
 	Content string
 	Alias   string
 	Hidden  bool
 }
 
+// Do writes the content of the message part to the agent.
 func (p MessagePartText) Do(writer AgentIO) error {
 	_, err := writer.Write([]byte(p.Content))
 	return err
@@ -244,6 +261,7 @@ func (p MessagePartText) String() string {
 	return p.Content
 }
 
+// PartsToString converts a list of message parts to a string.
 func PartsToString(parts ...MessagePart) string {
 	var sb strings.Builder
 	for _, part := range parts {
@@ -252,6 +270,7 @@ func PartsToString(parts ...MessagePart) string {
 	return sb.String()
 }
 
+// ExecuteParts executes a list of message parts.
 func ExecuteParts(writer AgentIO, parts ...MessagePart) error {
 	for _, part := range parts {
 		if err := part.Do(writer); err != nil {
@@ -260,6 +279,7 @@ func ExecuteParts(writer AgentIO, parts ...MessagePart) error {
 	}
 	return nil
 }
+
 
 func (c *Conversation) writeMessageWithConfirmation(ctx context.Context, messageParts ...MessagePart) error {
 	if c.cfg.SkipWritingMessage {
@@ -313,10 +333,14 @@ func (c *Conversation) writeMessageWithConfirmation(ctx context.Context, message
 	return nil
 }
 
+// MessageValidationErrorWhitespace is an error that occurs when a message is not trimmed of leading and trailing whitespace.
 var MessageValidationErrorWhitespace = xerrors.New("message must be trimmed of leading and trailing whitespace")
+// MessageValidationErrorEmpty is an error that occurs when a message is empty.
 var MessageValidationErrorEmpty = xerrors.New("message must not be empty")
+// MessageValidationErrorChanging is an error that occurs when a message is sent while the agent is not waiting for user input.
 var MessageValidationErrorChanging = xerrors.New("message can only be sent when the agent is waiting for user input")
 
+// SendMessage sends a message to the agent.
 func (c *Conversation) SendMessage(messageParts ...MessagePart) error {
 	c.lock.Lock()
 	defer c.lock.Unlock()
@@ -345,7 +369,7 @@ func (c *Conversation) SendMessage(messageParts ...MessagePart) error {
 
 	c.screenBeforeLastUserMessage = screenBeforeMessage
 	c.messages = append(c.messages, ConversationMessage{
-		Id:      len(c.messages),
+		ID:      len(c.messages),
 		Message: message,
 		Role:    ConversationRoleUser,
 		Time:    now,
@@ -383,6 +407,7 @@ func (c *Conversation) statusInner() ConversationStatus {
 	return ConversationStatusStable
 }
 
+// Status returns the status of the conversation.
 func (c *Conversation) Status() ConversationStatus {
 	c.lock.Lock()
 	defer c.lock.Unlock()
@@ -390,6 +415,7 @@ func (c *Conversation) Status() ConversationStatus {
 	return c.statusInner()
 }
 
+// Messages returns the messages in the conversation.
 func (c *Conversation) Messages() []ConversationMessage {
 	c.lock.Lock()
 	defer c.lock.Unlock()
@@ -399,6 +425,7 @@ func (c *Conversation) Messages() []ConversationMessage {
 	return result
 }
 
+// Screen returns the current screen of the agent.
 func (c *Conversation) Screen() string {
 	c.lock.Lock()
 	defer c.lock.Unlock()

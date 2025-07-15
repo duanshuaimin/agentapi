@@ -28,8 +28,10 @@ var (
 	termHeight   uint16
 )
 
+// AgentType is the type of agent to run.
 type AgentType = msgfmt.AgentType
 
+// Agent types.
 const (
 	AgentTypeClaude AgentType = msgfmt.AgentTypeClaude
 	AgentTypeGoose  AgentType = msgfmt.AgentTypeGoose
@@ -142,6 +144,7 @@ func runServer(ctx context.Context, logger *slog.Logger, argsToPass []string) er
 	return nil
 }
 
+// ServerCmd is the command to run the server.
 var ServerCmd = &cobra.Command{
 	Use:   "server [agent]",
 	Short: "Run the server",

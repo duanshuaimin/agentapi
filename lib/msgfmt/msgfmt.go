@@ -2,8 +2,10 @@ package msgfmt
 
 import "strings"
 
+// WhiteSpaceChars is a string containing all whitespace characters.
 const WhiteSpaceChars = " \t\n\r\f\v"
 
+// TrimWhitespace trims whitespace from the beginning and end of a string.
 func TrimWhitespace(msg string) string {
 	return strings.Trim(msg, WhiteSpaceChars)
 }
@@ -190,8 +192,10 @@ func trimEmptyLines(message string) string {
 	return strings.Join(lines, "\n")
 }
 
+// AgentType is the type of agent.
 type AgentType string
 
+// Agent types.
 const (
 	AgentTypeClaude AgentType = "claude"
 	AgentTypeGoose  AgentType = "goose"
@@ -207,6 +211,7 @@ func formatGenericMessage(message string, userInput string) string {
 	return message
 }
 
+// FormatAgentMessage formats a message from an agent.
 func FormatAgentMessage(agentType AgentType, message string, userInput string) string {
 	switch agentType {
 	case AgentTypeClaude:

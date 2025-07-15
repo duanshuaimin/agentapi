@@ -16,17 +16,17 @@ func TestNormalizeAndGetRuneLineMapping(t *testing.T) {
 	assert.Equal(t, []string{"Hello, World!", " ", "Test.", ""}, lines)
 	assert.Equal(t, []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 2, 2}, runeLineLocations)
 
-	nonAscii := "😄😄😄😄😄🎉🎉🎉🎉🎉🌮"
-	normalizedNonAscii, lines, runeLineLocations := normalizeAndGetRuneLineMapping(nonAscii)
-	assert.Equal(t, len([]rune(nonAscii)), len(runeLineLocations))
-	assert.Equal(t, normalizedNonAscii, []rune("😄😄😄😄😄🎉🎉🎉🎉🎉🌮"))
+	nonASCII := "😄😄😄😄😄🎉🎉🎉🎉🎉🌮"
+	normalizedNonASCII, lines, runeLineLocations := normalizeAndGetRuneLineMapping(nonASCII)
+	assert.Equal(t, len([]rune(nonASCII)), len(runeLineLocations))
+	assert.Equal(t, normalizedNonASCII, []rune("😄😄😄😄😄🎉🎉🎉🎉🎉🌮"))
 	assert.Equal(t, []string{"😄😄😄😄😄🎉🎉🎉🎉🎉🌮"}, lines)
 	assert.Equal(t, []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, runeLineLocations)
 
-	nonAscii2 := "╭───"
-	normalizedNonAscii2, lines, runeLineLocations := normalizeAndGetRuneLineMapping(nonAscii2)
-	assert.Equal(t, len([]rune(nonAscii2)), len(runeLineLocations))
-	assert.Equal(t, normalizedNonAscii2, []rune("╭───"))
+	nonASCII2 := "╭───"
+	normalizedNonASCII2, lines, runeLineLocations := normalizeAndGetRuneLineMapping(nonASCII2)
+	assert.Equal(t, len([]rune(nonASCII2)), len(runeLineLocations))
+	assert.Equal(t, normalizedNonASCII2, []rune("╭───"))
 	assert.Equal(t, []string{"╭───"}, lines)
 	assert.Equal(t, []int{0, 0, 0, 0}, runeLineLocations)
 }

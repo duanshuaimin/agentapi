@@ -13,11 +13,14 @@ import (
 )
 
 //go:embed chat/*
+// ChatStaticFiles is an embedded filesystem containing the chat UI static files.
 var chatStaticFiles embed.FS
 
 // This must be kept in sync with the BASE_PATH in the Makefile.
 const magicBasePath = "/magic-base-path-placeholder"
 
+// createModifiedFS creates a new filesystem that is a copy of the base filesystem,
+// but with all instances of oldBasePath replaced with newBasePath.
 func createModifiedFS(baseFS fs.FS, oldBasePath string, newBasePath string) (*afero.HttpFs, error) {
 	ro := afero.FromIOFS{FS: baseFS}
 	overlay := afero.NewMemMapFs()
@@ -51,7 +54,7 @@ func createModifiedFS(baseFS fs.FS, oldBasePath string, newBasePath string) (*af
 }
 
 // FileServerWithIndexFallback creates a file server that serves the given filesystem
-// and falls back to index.html for any path that doesn't match a file
+// and falls back to index.html for any path that doesn't match a file.
 func FileServerWithIndexFallback(chatBasePath string) http.Handler {
 	subFS, err := fs.Sub(chatStaticFiles, "chat")
 	if err != nil {

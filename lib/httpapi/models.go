@@ -8,25 +8,29 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 )
 
+// MessageType is the type of a message.
 type MessageType string
 
+// Message types.
 const (
 	MessageTypeUser MessageType = "user"
 	MessageTypeRaw  MessageType = "raw"
 )
 
+// MessageTypeValues are the possible values for MessageType.
 var MessageTypeValues = []MessageType{
 	MessageTypeUser,
 	MessageTypeRaw,
 }
 
+// Schema returns the OpenAPI schema for MessageType.
 func (m MessageType) Schema(r huma.Registry) *huma.Schema {
 	return util.OpenAPISchema(r, "MessageType", MessageTypeValues)
 }
 
 // Message represents a message
 type Message struct {
-	Id      int                 `json:"id" doc:"Unique identifier for the message. This identifier also represents the order of the message in the conversation history."`
+	ID      int                 `json:"id" doc:"Unique identifier for the message. This identifier also represents the order of the message in the conversation history."`
 	Content string              `json:"content" example:"Hello world" doc:"Message content. The message is formatted as it appears in the agent's terminal session, meaning that, by default, it consists of lines of text with 80 characters per line."`
 	Role    st.ConversationRole `json:"role" doc:"Role of the message author"`
 	Time    time.Time           `json:"time" doc:"Timestamp of the message"`
@@ -46,6 +50,7 @@ type MessagesResponse struct {
 	}
 }
 
+// MessageRequestBody is the body of a message request.
 type MessageRequestBody struct {
 	Content string      `json:"content" example:"Hello, agent!" doc:"Message content"`
 	Type    MessageType `json:"type" doc:"A 'user' type message will be logged as a user message in the conversation history and submitted to the agent. AgentAPI will wait until the agent starts carrying out the task described in the message before responding. A 'raw' type message will be written directly to the agent's terminal session as keystrokes and will not be saved in the conversation history. 'raw' messages are useful for sending escape sequences to the terminal."`

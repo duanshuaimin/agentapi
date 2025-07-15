@@ -118,7 +118,7 @@ func TestMessages(t *testing.T) {
 	now := time.Now()
 	agentMsg := func(id int, msg string) st.ConversationMessage {
 		return st.ConversationMessage{
-			Id:      id,
+			ID:      id,
 			Message: msg,
 			Role:    st.ConversationRoleAgent,
 			Time:    now,
@@ -126,7 +126,7 @@ func TestMessages(t *testing.T) {
 	}
 	userMsg := func(id int, msg string) st.ConversationMessage {
 		return st.ConversationMessage{
-			Id:      id,
+			ID:      id,
 			Message: msg,
 			Role:    st.ConversationRoleUser,
 			Time:    now,
@@ -319,7 +319,7 @@ func TestMessages(t *testing.T) {
 		})
 		assert.Equal(t, []st.ConversationMessage{
 			{
-				Id:      0,
+				ID:      0,
 				Message: "",
 				Role:    st.ConversationRoleAgent,
 				Time:    now,
