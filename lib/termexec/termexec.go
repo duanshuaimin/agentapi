@@ -66,6 +66,8 @@ func StartProcess(ctx context.Context, args StartProcessConfig) (*Process, error
 
 			originalPath := os.Getenv("PATH")
 			newPath := strings.Join(newPathEntries, ":") + ":" + originalPath
+			logger.Info("Original PATH", "path", originalPath)
+			logger.Info("New PATH", "path", newPath)
 			execCmd.Env = append(execCmd.Env, "PATH="+newPath)
 		}
 	}
