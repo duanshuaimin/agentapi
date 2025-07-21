@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"os"
 	"os/exec"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -45,6 +46,29 @@ func StartProcess(ctx context.Context, args StartProcessConfig) (*Process, error
 	// Setting this signals to the process that it should only use compatible
 	// escape sequences.
 	execCmd.Env = append(os.Environ(), "TERM=vt100")
+
+	homeDir, err := os.UserHomeDir()
+	if err == nil {
+		claudeDir := homeDir + "/.claude"
+		if _, err := os.Stat(claudeDir); !os.IsNotExist(err) {
+			var newPathEntries []string
+			newPathEntries = append(newPathEntries, claudeDir)
+
+			files, err := os.ReadDir(claudeDir)
+			if err == nil {
+				for _, file := range files {
+					if file.IsDir() {
+						newPathEntries = append(newPathEntries, claudeDir+"/"+file.Name())
+					}
+				}
+			}
+
+			originalPath := os.Getenv("PATH")
+			newPath := strings.Join(newPathEntries, ":") + ":" + originalPath
+			execCmd.Env = append(execCmd.Env, "PATH="+newPath)
+		}
+	}
+
 	if err := xp.StartProcessInTerminal(execCmd); err != nil {
 		return nil, err
 	}
