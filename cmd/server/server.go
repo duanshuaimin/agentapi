@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -141,6 +142,52 @@ func findAgentPath(agent string) (string, error) {
 	return "", fmt.Errorf("agent executable '%s' not found in PATH or user's home directory", agent)
 }
 
+func ensureClaudeOnboarding(logger *slog.Logger) error {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return xerrors.Errorf("could not get user home directory: %w", err)
+	}
+	configPath := filepath.Join(homeDir, ".claude.json")
+
+	var config map[string]interface{}
+
+	fileData, err := os.ReadFile(configPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			// File doesn't exist, create a new one
+			config = make(map[string]interface{})
+		} else {
+			return xerrors.Errorf("failed to read claude config file: %w", err)
+		}
+	} else {
+		// File exists, parse it
+		if err := json.Unmarshal(fileData, &config); err != nil {
+			return xerrors.Errorf("failed to parse claude config file: %w", err)
+		}
+	}
+
+	// Check if onboarding is complete
+	if val, ok := config["hasCompletedOnboarding"].(bool); ok && val {
+		logger.Info("Claude onboarding already completed.")
+		return nil
+	}
+
+	// Update the config and write it back
+	logger.Info("Setting hasCompletedOnboarding to true in claude config.")
+	config["hasCompletedOnboarding"] = true
+
+	updatedData, err := json.MarshalIndent(config, "", "  ")
+	if err != nil {
+		return xerrors.Errorf("failed to marshal updated claude config: %w", err)
+	}
+
+	if err := os.WriteFile(configPath, updatedData, 0644); err != nil {
+		return xerrors.Errorf("failed to write updated claude config: %w", err)
+	}
+
+	return nil
+}
+
 func runServer(ctx context.Context, logger *slog.Logger, argsToPass []string) error {
 	agentName := argsToPass[0]
 	logger.Info("Starting agent", "agent", agentName)
@@ -157,6 +204,9 @@ func runServer(ctx context.Context, logger *slog.Logger, argsToPass []string) er
 	}
 
 	if agentType == AgentTypeClaude {
+		if err := ensureClaudeOnboarding(logger); err != nil {
+			return xerrors.Errorf("failed to ensure claude onboarding: %w", err)
+		}
 		err := godotenv.Load()
 		if err != nil {
 			return xerrors.Errorf("failed to load .env file: %w", err)
