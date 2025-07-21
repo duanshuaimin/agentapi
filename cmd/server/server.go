@@ -79,6 +79,7 @@ func parseAgentType(firstArg string, agentTypeVar string) (AgentType, error) {
 
 func runServer(ctx context.Context, logger *slog.Logger, argsToPass []string) error {
 	agent := argsToPass[0]
+	logger.Info("Starting agent", "agent", agent)
 	agentType, err := parseAgentType(agent, agentTypeVar)
 	if err != nil {
 		return xerrors.Errorf("failed to parse agent type: %w", err)
