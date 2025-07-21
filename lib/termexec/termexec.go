@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"io"
+	"io/fs"
 	"log/slog"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"sync"
 	"syscall"
@@ -52,16 +54,15 @@ func StartProcess(ctx context.Context, args StartProcessConfig) (*Process, error
 		claudeDir := homeDir + "/.claude"
 		if _, err := os.Stat(claudeDir); !os.IsNotExist(err) {
 			var newPathEntries []string
-			newPathEntries = append(newPathEntries, claudeDir)
-
-			files, err := os.ReadDir(claudeDir)
-			if err == nil {
-				for _, file := range files {
-					if file.IsDir() {
-						newPathEntries = append(newPathEntries, claudeDir+"/"+file.Name())
-					}
+			filepath.WalkDir(claudeDir, func(path string, d fs.DirEntry, err error) error {
+				if err != nil {
+					return err
 				}
-			}
+				if d.IsDir() {
+					newPathEntries = append(newPathEntries, path)
+				}
+				return nil
+			})
 
 			originalPath := os.Getenv("PATH")
 			newPath := strings.Join(newPathEntries, ":") + ":" + originalPath

@@ -13,7 +13,7 @@ func TestStartProcess_FindsExecutableInSubdirectory(t *testing.T) {
 		t.Fatalf("Failed to get home directory: %v", err)
 	}
 
-	claudeDir := filepath.Join(homeDir, ".claude", "test-subdir")
+	claudeDir := filepath.Join(homeDir, ".claude", "test-subdir", "another-level")
 	if err := os.MkdirAll(claudeDir, 0755);
 	err != nil {
 		t.Fatalf("Failed to create test directory: %v", err)
