@@ -110,22 +110,22 @@ export default function MessageList({ messages }: MessageListProps) {
         {messages.map((message) => (
           <div
             key={message.id ?? "draft"}
-            className={`${message.role === "user" ? "text-right" : ""}`}
+            className={`${message.role === "user" ? "" : ""}`}
           >
             <div
               className={`inline-block rounded-lg ${
                 message.role === "user"
-                  ? "bg-accent-foreground rounded-lg max-w-[90%] px-4 py-3 text-accent"
+                  ? "max-w-[80ch]"
                   : "max-w-[80ch]"
               } ${message.id === undefined ? "animate-pulse" : ""}`}
             >
               <div
-                className={`whitespace-pre-wrap break-words text-left text-xs md:text-sm leading-relaxed md:leading-normal ${
-                  message.role === "user" ? "" : "font-mono"
-                }`}
+                className={`whitespace-pre-wrap break-words text-left text-xs md:text-sm leading-relaxed md:leading-normal font-mono`}
               >
                 {message.role !== "user" && message.content === "" ? (
                   <LoadingDots />
+                ) : message.role === "user" ? (
+                  `> ${message.content.trim()}`
                 ) : (
                   message.content.trim()
                 )}

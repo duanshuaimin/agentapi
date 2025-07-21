@@ -45,6 +45,7 @@ func StartProcess(ctx context.Context, args StartProcessConfig) (*Process, error
 	// Setting this signals to the process that it should only use compatible
 	// escape sequences.
 	execCmd.Env = append(os.Environ(), "TERM=vt100")
+
 	if err := xp.StartProcessInTerminal(execCmd); err != nil {
 		return nil, err
 	}

@@ -199,7 +199,7 @@ func (s *Server) getMessages(ctx context.Context, input *struct{}) (*MessagesRes
 // createMessage handles POST /message
 func (s *Server) createMessage(ctx context.Context, input *MessageRequest) (*MessageResponse, error) {
 	s.mu.Lock()
-	defer s.mu.RUnlock()
+	defer s.mu.Unlock()
 
 	switch input.Body.Type {
 	case MessageTypeUser:

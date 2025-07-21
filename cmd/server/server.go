@@ -4,9 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"log/slog"
 	"net/http"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"github.com/joho/godotenv"
@@ -77,9 +80,78 @@ func parseAgentType(firstArg string, agentTypeVar string) (AgentType, error) {
 	return agentType, nil
 }
 
+var errAgentFound = errors.New("agent found")
+
+func findAgentPath(agent string) (string, error) {
+	// If the path is absolute, just check if it exists.
+	if filepath.IsAbs(agent) {
+		if _, err := os.Stat(agent); err == nil {
+			return agent, nil
+		}
+		return "", fmt.Errorf("agent not found at absolute path: %s", agent)
+	}
+
+	// Check if the agent is in the system's PATH.
+	if path, err := exec.LookPath(agent); err == nil {
+		return path, nil
+	}
+
+	// Search in user's home directory recursively.
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return "", xerrors.Errorf("could not get user home directory: %w", err)
+	}
+
+	var foundPath string
+	walkErr := filepath.WalkDir(homeDir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			// Don't walk into directories we can't read
+			if os.IsPermission(err) {
+				return filepath.SkipDir
+			}
+			return err
+		}
+		// Skip directories that are common for dependencies or caches to speed up search.
+		if d.IsDir() {
+			switch d.Name() {
+			case "node_modules", ".git", ".cache", "vendor", "Library", "AppData", "Caches", "logs", "Logs":
+				return filepath.SkipDir
+			}
+		}
+
+		if !d.IsDir() && d.Name() == agent {
+			if info, err := d.Info(); err == nil {
+				if info.Mode()&0111 != 0 {
+					foundPath = path
+					return errAgentFound // Stop searching
+				}
+			}
+		}
+		return nil
+	})
+
+	if walkErr != nil && !errors.Is(walkErr, errAgentFound) {
+		return "", xerrors.Errorf("error while searching for agent in home directory: %w", walkErr)
+	}
+
+	if foundPath != "" {
+		return foundPath, nil
+	}
+
+	return "", fmt.Errorf("agent executable '%s' not found in PATH or user's home directory", agent)
+}
+
 func runServer(ctx context.Context, logger *slog.Logger, argsToPass []string) error {
-	agent := argsToPass[0]
-	agentType, err := parseAgentType(agent, agentTypeVar)
+	agentName := argsToPass[0]
+	logger.Info("Starting agent", "agent", agentName)
+
+	agentPath, err := findAgentPath(agentName)
+	if err != nil {
+		return xerrors.Errorf("failed to find agent executable: %w", err)
+	}
+	logger.Info("Found agent executable", "path", agentPath)
+
+	agentType, err := parseAgentType(agentName, agentTypeVar)
 	if err != nil {
 		return xerrors.Errorf("failed to parse agent type: %w", err)
 	}
@@ -103,7 +175,7 @@ func runServer(ctx context.Context, logger *slog.Logger, argsToPass []string) er
 		process = nil
 	} else {
 		process, err = httpapi.SetupProcess(ctx, httpapi.SetupProcessConfig{
-			Program:        agent,
+			Program:        agentPath,
 			ProgramArgs:    argsToPass[1:],
 			TerminalWidth:  termWidth,
 			TerminalHeight: termHeight,
