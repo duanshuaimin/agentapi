@@ -7,6 +7,8 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"github.com/joho/godotenv"
@@ -77,10 +79,56 @@ func parseAgentType(firstArg string, agentTypeVar string) (AgentType, error) {
 	return agentType, nil
 }
 
+func findAgentPath(agent string) (string, error) {
+	// If the path is absolute, just check if it exists.
+	if filepath.IsAbs(agent) {
+		if _, err := os.Stat(agent); err == nil {
+			return agent, nil
+		}
+		return "", fmt.Errorf("agent not found at absolute path: %s", agent)
+	}
+
+	// Check if the agent is in the system's PATH.
+	if path, err := exec.LookPath(agent); err == nil {
+		return path, nil
+	}
+
+	// Search in user's home directory in some common locations
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return "", xerrors.Errorf("could not get user home directory: %w", err)
+	}
+
+	searchDirs := []string{
+		homeDir,
+		filepath.Join(homeDir, "bin"),
+		filepath.Join(homeDir, ".local", "bin"),
+	}
+
+	for _, dir := range searchDirs {
+		potentialPath := filepath.Join(dir, agent)
+		if info, err := os.Stat(potentialPath); err == nil && !info.IsDir() {
+			// Check for execute permission for user, group or other.
+			if info.Mode()&0111 != 0 {
+				return potentialPath, nil
+			}
+		}
+	}
+
+	return "", fmt.Errorf("agent executable '%s' not found in PATH or common user directories", agent)
+}
+
 func runServer(ctx context.Context, logger *slog.Logger, argsToPass []string) error {
-	agent := argsToPass[0]
-	logger.Info("Starting agent", "agent", agent)
-	agentType, err := parseAgentType(agent, agentTypeVar)
+	agentName := argsToPass[0]
+	logger.Info("Starting agent", "agent", agentName)
+
+	agentPath, err := findAgentPath(agentName)
+	if err != nil {
+		return xerrors.Errorf("failed to find agent executable: %w", err)
+	}
+	logger.Info("Found agent executable", "path", agentPath)
+
+	agentType, err := parseAgentType(agentName, agentTypeVar)
 	if err != nil {
 		return xerrors.Errorf("failed to parse agent type: %w", err)
 	}
@@ -104,7 +152,7 @@ func runServer(ctx context.Context, logger *slog.Logger, argsToPass []string) er
 		process = nil
 	} else {
 		process, err = httpapi.SetupProcess(ctx, httpapi.SetupProcessConfig{
-			Program:        agent,
+			Program:        agentPath,
 			ProgramArgs:    argsToPass[1:],
 			TerminalWidth:  termWidth,
 			TerminalHeight: termHeight,
