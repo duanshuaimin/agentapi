@@ -4,12 +4,9 @@ import (
 	"context"
 	"errors"
 	"io"
-	"io/fs"
 	"log/slog"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -48,38 +45,6 @@ func StartProcess(ctx context.Context, args StartProcessConfig) (*Process, error
 	// Setting this signals to the process that it should only use compatible
 	// escape sequences.
 	execCmd.Env = append(os.Environ(), "TERM=vt100")
-
-	homeDir, err := os.UserHomeDir()
-	if err == nil {
-		claudeDir := homeDir + "/.claude"
-		claudeLocalDir := homeDir + "/.claude/local"
-		var newPathEntries []string
-		
-		// Add ~/.claude/local specifically if it exists
-		if _, err := os.Stat(claudeLocalDir); !os.IsNotExist(err) {
-			newPathEntries = append(newPathEntries, claudeLocalDir)
-		}
-		
-		if _, err := os.Stat(claudeDir); !os.IsNotExist(err) {
-			filepath.WalkDir(claudeDir, func(path string, d fs.DirEntry, err error) error {
-				if err != nil {
-					return err
-				}
-				if d.IsDir() && path != claudeLocalDir {
-					newPathEntries = append(newPathEntries, path)
-				}
-				return nil
-			})
-		}
-
-		if len(newPathEntries) > 0 {
-			originalPath := os.Getenv("PATH")
-			newPath := strings.Join(newPathEntries, ":") + ":" + originalPath
-			logger.Info("Original PATH", "path", originalPath)
-			logger.Info("New PATH", "path", newPath)
-			execCmd.Env = append(execCmd.Env, "PATH="+newPath)
-		}
-	}
 
 	if err := xp.StartProcessInTerminal(execCmd); err != nil {
 		return nil, err
