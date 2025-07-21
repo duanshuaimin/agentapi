@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"log/slog"
 	"net/http"
 	"os"
@@ -79,6 +80,8 @@ func parseAgentType(firstArg string, agentTypeVar string) (AgentType, error) {
 	return agentType, nil
 }
 
+var errAgentFound = errors.New("agent found")
+
 func findAgentPath(agent string) (string, error) {
 	// If the path is absolute, just check if it exists.
 	if filepath.IsAbs(agent) {
@@ -93,29 +96,49 @@ func findAgentPath(agent string) (string, error) {
 		return path, nil
 	}
 
-	// Search in user's home directory in some common locations
+	// Search in user's home directory recursively.
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return "", xerrors.Errorf("could not get user home directory: %w", err)
 	}
 
-	searchDirs := []string{
-		homeDir,
-		filepath.Join(homeDir, "bin"),
-		filepath.Join(homeDir, ".local", "bin"),
-	}
-
-	for _, dir := range searchDirs {
-		potentialPath := filepath.Join(dir, agent)
-		if info, err := os.Stat(potentialPath); err == nil && !info.IsDir() {
-			// Check for execute permission for user, group or other.
-			if info.Mode()&0111 != 0 {
-				return potentialPath, nil
+	var foundPath string
+	walkErr := filepath.WalkDir(homeDir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			// Don't walk into directories we can't read
+			if os.IsPermission(err) {
+				return filepath.SkipDir
+			}
+			return err
+		}
+		// Skip directories that are common for dependencies or caches to speed up search.
+		if d.IsDir() {
+			switch d.Name() {
+			case "node_modules", ".git", ".cache", "vendor", "Library", "AppData", "Caches", "logs", "Logs":
+				return filepath.SkipDir
 			}
 		}
+
+		if !d.IsDir() && d.Name() == agent {
+			if info, err := d.Info(); err == nil {
+				if info.Mode()&0111 != 0 {
+					foundPath = path
+					return errAgentFound // Stop searching
+				}
+			}
+		}
+		return nil
+	})
+
+	if walkErr != nil && !errors.Is(walkErr, errAgentFound) {
+		return "", xerrors.Errorf("error while searching for agent in home directory: %w", walkErr)
 	}
 
-	return "", fmt.Errorf("agent executable '%s' not found in PATH or common user directories", agent)
+	if foundPath != "" {
+		return foundPath, nil
+	}
+
+	return "", fmt.Errorf("agent executable '%s' not found in PATH or user's home directory", agent)
 }
 
 func runServer(ctx context.Context, logger *slog.Logger, argsToPass []string) error {
