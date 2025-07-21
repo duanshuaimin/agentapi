@@ -52,18 +52,27 @@ func StartProcess(ctx context.Context, args StartProcessConfig) (*Process, error
 	homeDir, err := os.UserHomeDir()
 	if err == nil {
 		claudeDir := homeDir + "/.claude"
+		claudeLocalDir := homeDir + "/.claude/local"
+		var newPathEntries []string
+		
+		// Add ~/.claude/local specifically if it exists
+		if _, err := os.Stat(claudeLocalDir); !os.IsNotExist(err) {
+			newPathEntries = append(newPathEntries, claudeLocalDir)
+		}
+		
 		if _, err := os.Stat(claudeDir); !os.IsNotExist(err) {
-			var newPathEntries []string
 			filepath.WalkDir(claudeDir, func(path string, d fs.DirEntry, err error) error {
 				if err != nil {
 					return err
 				}
-				if d.IsDir() {
+				if d.IsDir() && path != claudeLocalDir {
 					newPathEntries = append(newPathEntries, path)
 				}
 				return nil
 			})
+		}
 
+		if len(newPathEntries) > 0 {
 			originalPath := os.Getenv("PATH")
 			newPath := strings.Join(newPathEntries, ":") + ":" + originalPath
 			logger.Info("Original PATH", "path", originalPath)
