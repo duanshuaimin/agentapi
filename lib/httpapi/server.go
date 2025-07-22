@@ -179,12 +179,17 @@ func (s *Server) getStatus(ctx context.Context, input *struct{}) (*StatusRespons
 
 // getMessages handles GET /messages
 func (s *Server) getMessages(ctx context.Context, input *struct{}) (*MessagesResponse, error) {
+	s.logger.Debug("Received GET /messages request")
+	
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
+	conversationMessages := s.conversation.Messages()
+	s.logger.Info("Retrieving conversation messages", "messageCount", len(conversationMessages))
+
 	resp := &MessagesResponse{}
-	resp.Body.Messages = make([]Message, len(s.conversation.Messages()))
-	for i, msg := range s.conversation.Messages() {
+	resp.Body.Messages = make([]Message, len(conversationMessages))
+	for i, msg := range conversationMessages {
 		resp.Body.Messages[i] = Message{
 			ID:      msg.ID,
 			Role:    msg.Role,
@@ -192,6 +197,15 @@ func (s *Server) getMessages(ctx context.Context, input *struct{}) (*MessagesRes
 			Time:    msg.Time,
 		}
 	}
+
+	s.logger.Debug("Successfully prepared messages response", 
+		"messageCount", len(resp.Body.Messages),
+		"lastMessageID", func() int {
+			if len(resp.Body.Messages) > 0 {
+				return resp.Body.Messages[len(resp.Body.Messages)-1].ID
+			}
+			return -1
+		}())
 
 	return resp, nil
 }
