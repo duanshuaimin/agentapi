@@ -23,6 +23,7 @@ type Process struct {
 	execCmd          *exec.Cmd
 	screenUpdateLock sync.RWMutex
 	lastScreenUpdate time.Time
+	logger           *slog.Logger
 }
 
 // StartProcessConfig is the configuration for starting a process.
@@ -50,7 +51,7 @@ func StartProcess(ctx context.Context, args StartProcessConfig) (*Process, error
 		return nil, err
 	}
 
-	process := &Process{xp: xp, execCmd: execCmd}
+	process := &Process{xp: xp, execCmd: execCmd, logger: logger}
 
 	go func() {
 		// HACK: Working around xpty concurrency limitations
@@ -122,12 +123,15 @@ func (p *Process) ReadScreen() string {
 		if time.Since(p.lastScreenUpdate) >= 16*time.Millisecond {
 			state := p.xp.State.String()
 			p.screenUpdateLock.RUnlock()
+			p.logger.Debug("ReadScreen: screen content", "length", len(state), "content", state)
 			return state
 		}
 		p.screenUpdateLock.RUnlock()
 		time.Sleep(16 * time.Millisecond)
 	}
-	return p.xp.State.String()
+	state := p.xp.State.String()
+	p.logger.Debug("ReadScreen: screen content (timeout)", "length", len(state), "content", state)
+	return state
 }
 
 // Write sends input to the process via the pseudo terminal.

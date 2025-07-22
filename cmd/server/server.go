@@ -30,6 +30,7 @@ var (
 	chatBasePath string
 	termWidth    uint16
 	termHeight   uint16
+	logLevel     string
 )
 
 // AgentType is the type of agent to run.
@@ -43,6 +44,21 @@ const (
 	AgentTypeCodex  AgentType = msgfmt.AgentTypeCodex
 	AgentTypeCustom AgentType = msgfmt.AgentTypeCustom
 )
+
+func parseLogLevel(levelStr string) slog.Level {
+	switch strings.ToUpper(levelStr) {
+	case "DEBUG":
+		return slog.LevelDebug
+	case "INFO":
+		return slog.LevelInfo
+	case "WARN", "WARNING":
+		return slog.LevelWarn
+	case "ERROR":
+		return slog.LevelError
+	default:
+		return slog.LevelInfo // 默认为 INFO 级别
+	}
+}
 
 func parseAgentType(firstArg string, agentTypeVar string) (AgentType, error) {
 	var agentType AgentType
@@ -273,7 +289,10 @@ var ServerCmd = &cobra.Command{
 	Long:  `Run the server with the specified agent (claude, goose, aider, codex)`,
 	Args:  cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+		level := parseLogLevel(logLevel)
+		logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+			Level: level,
+		}))
 		ctx := logctx.WithLogger(context.Background(), logger)
 		if err := runServer(ctx, logger, cmd.Flags().Args()); err != nil {
 			fmt.Fprintf(os.Stderr, "%+v\n", err)
@@ -289,4 +308,5 @@ func init() {
 	ServerCmd.Flags().StringVarP(&chatBasePath, "chat-base-path", "c", "/chat", "Base path for assets and routes used in the static files of the chat interface")
 	ServerCmd.Flags().Uint16VarP(&termWidth, "term-width", "W", 80, "Width of the emulated terminal")
 	ServerCmd.Flags().Uint16VarP(&termHeight, "term-height", "H", 1000, "Height of the emulated terminal")
+	ServerCmd.Flags().StringVarP(&logLevel, "log-level", "l", "info", "Log level (debug, info, warn, error)")
 }
