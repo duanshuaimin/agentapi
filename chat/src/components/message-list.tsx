@@ -1,6 +1,7 @@
 "use client";
 
 import { useLayoutEffect, useRef, useEffect, useCallback } from "react";
+import Image from "next/image";
 
 interface Message {
   role: string;
@@ -17,6 +18,10 @@ interface DraftMessage extends Omit<Message, "id"> {
 interface MessageListProps {
   messages: (Message | DraftMessage)[];
 }
+
+const isImageUrl = (url: string) => {
+  return /\.(jpeg|jpg|gif|png|svg)$/i.test(url);
+};
 
 export default function MessageList({ messages }: MessageListProps) {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -122,13 +127,30 @@ export default function MessageList({ messages }: MessageListProps) {
               <div
                 className={`whitespace-pre-wrap break-words text-left text-xs md:text-sm leading-relaxed md:leading-normal font-mono`}
               >
-                {message.role !== "user" && message.content === "" ? (
-                  <LoadingDots />
-                ) : message.role === "user" ? (
-                  `> ${message.content.trim()}`
-                ) : (
-                  message.content.trim()
-                )}
+                {(() => {
+                  const trimmedContent = message.content.trim();
+                  if (isImageUrl(trimmedContent)) {
+                    return (
+                      <Image
+                        src={trimmedContent}
+                        alt="Embedded image"
+                        width={400}
+                        height={300}
+                        className="rounded-md object-cover mt-2"
+                      />
+                    );
+                  }
+
+                  if (message.role !== "user" && message.content === "") {
+                    return <LoadingDots />;
+                  }
+
+                  if (message.role === "user") {
+                    return `> ${trimmedContent}`;
+                  }
+
+                  return trimmedContent;
+                })()}
               </div>
             </div>
           </div>
